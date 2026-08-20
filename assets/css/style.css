@@ -222,6 +222,26 @@ canvas:active {
     text-overflow: ellipsis;
 }
 
+/* ── Tombol Reset Rotasi ─────────────────── */
+.reset-rotate-btn {
+    align-self: center;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 14px;
+    border-radius: 100px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.reset-rotate-btn:hover {
+    background: var(--border);
+    color: var(--text);
+}
+
 /* ── Tombol Hapus Foto ────────────────────── */
 .reset-btn {
     display: flex;
@@ -313,6 +333,47 @@ input[type="range"]::-moz-range-thumb {
     border: 3px solid #fff;
     box-shadow: 0 1px 6px rgba(37,99,235,0.35);
     cursor: pointer;
+}
+
+/* ── Input Nama ───────────────────────────── */
+.input-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.nama-input {
+    width: 100%;
+    padding: 12px 14px;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--text);
+    background: #f8fafc;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.nama-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+    background: #fff;
+}
+
+.nama-input.error {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220,38,38,0.1);
+}
+
+.nama-input::placeholder {
+    color: #cbd5e1;
+}
+
+.form-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 /* ── Download Button ──────────────────────── */
@@ -439,4 +500,290 @@ input[type="range"]::-moz-range-thumb {
     .site-header h1 { font-size: 22px; }
     .controls { padding: 18px; }
     .download-btn { font-size: 14px; }
+}
+
+/* ── Galeri Section ───────────────────────── */
+.gallery-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.gallery-header {
+    text-align: center;
+}
+
+.gallery-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+.gallery-header p {
+    font-size: 13px;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 8px;
+}
+
+.gallery-count {
+    display: inline-block;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #fde68a;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 12px;
+    border-radius: 100px;
+}
+
+.gallery-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.gallery-refresh-btn {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, transform 0.3s;
+    flex-shrink: 0;
+}
+
+.gallery-refresh-btn:hover {
+    background: rgba(255,255,255,0.25);
+}
+
+.gallery-refresh-btn.spinning svg {
+    animation: spin 0.6s linear infinite;
+}
+
+/* Grid foto galeri */
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.gallery-item {
+    position: relative;
+    aspect-ratio: 3/4;
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.08);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+}
+
+.gallery-item:hover {
+    transform: scale(1.04);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+    z-index: 2;
+}
+
+.gallery-item img {
+    width: 100%;
+    flex: 1;
+    object-fit: cover;
+    display: block;
+    transition: opacity 0.3s;
+    min-height: 0;
+}
+
+.gallery-item img.loading {
+    opacity: 0;
+}
+
+.gallery-item img.loaded {
+    opacity: 1;
+}
+
+.gallery-name {
+    background: rgba(0,0,0,0.65);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    padding: 6px 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+    line-height: 1.4;
+}
+
+.gallery-name span {
+    display: block;
+    font-weight: 400;
+    font-size: 11px;
+    opacity: 0.85;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Loading state galeri */
+.gallery-loading {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 32px;
+    color: rgba(255,255,255,0.6);
+    font-size: 13px;
+}
+
+.spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid rgba(255,255,255,0.2);
+    border-top-color: #fde68a;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+/* Kosong */
+.gallery-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 32px;
+    color: rgba(255,255,255,0.5);
+    font-size: 13px;
+}
+
+/* Tombol load more */
+.load-more-btn {
+    width: 100%;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #fff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 11px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.load-more-btn:hover {
+    background: rgba(255,255,255,0.22);
+}
+
+/* Lightbox */
+.lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+    animation: fadeIn 0.2s ease;
+}
+
+.lightbox img {
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+
+.lightbox-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: #fff;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.lightbox-close:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* ── Galeri Collapse/Expand ───────────────── */
+.gallery-collapse-wrapper {
+    position: relative;
+    overflow: hidden;
+    transition: max-height 0.5s ease;
+    max-height: 520px; /* tampil 2 baris awal */
+}
+
+.gallery-collapse-wrapper.expanded {
+    max-height: 9999px;
+}
+
+.gallery-fade {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 100px;
+    background: linear-gradient(to bottom, transparent, #1a4fa8);
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.gallery-collapse-wrapper.expanded .gallery-fade {
+    opacity: 0;
+}
+
+.gallery-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    background: rgba(255,255,255,0.15);
+    border: 1.5px solid rgba(255,255,255,0.3);
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.gallery-toggle-btn:hover {
+    background: rgba(255,255,255,0.25);
+}
+
+.gallery-toggle-btn svg {
+    transition: transform 0.3s;
+    flex-shrink: 0;
+}
+
+.gallery-toggle-btn.expanded svg {
+    transform: rotate(180deg);
 }

@@ -6,6 +6,9 @@
 const SUPABASE_URL    = 'https://mwqkzuodfpzrpnjijqnz.supabase.co';
 const SUPABASE_ANON   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im13cWt6dW9kZnB6cnBuamlqcW56Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyNDM1MTAsImV4cCI6MjEwMjgxOTUxMH0.1coY9tNoI9WcOZ6zzlwqYd6umDnf2TPJzTYq7wVsvr4';
 const BUCKET_NAME     = 'twibbon-results';
+const GALLERY_BUCKET  = 'twibbon-gallery';
+const GALLERY_MAX_MB  = 2;        // maks ukuran file galeri (MB)
+const GALLERY_PAGE    = 12;       // jumlah foto per halaman
 // ─────────────────────────────────────────────
 
 const canvas = document.getElementById('twibbonCanvas');
@@ -14,7 +17,12 @@ const uploadImage = document.getElementById('uploadImage');
 const zoomSlider  = document.getElementById('zoomSlider');
 const downloadBtn = document.getElementById('downloadBtn');
 const uploadLabel = document.getElementById('uploadLabel');
-const resetBtn    = document.getElementById('resetBtn');
+const resetBtn       = document.getElementById('resetBtn');
+const rotateSlider   = document.getElementById('rotateSlider');
+const rotateValue    = document.getElementById('rotateValue');
+const resetRotateBtn = document.getElementById('resetRotateBtn');
+const inputNama      = document.getElementById('inputNama');
+const inputProdi     = document.getElementById('inputProdi');
 
 // ── KONFIGURASI BINGKAI ───────────────────────
 // Semua nilai piksel sesuai resolusi asli template
@@ -28,6 +36,14 @@ const FRAME = {
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const toRad = d => d * Math.PI / 180;
+
+// Hapus error border saat input diisi
+inputNama.addEventListener('input', () => {
+    if (inputNama.value.trim()) { inputNama.classList.remove('error'); hideError(); }
+});
+inputProdi.addEventListener('input', () => {
+    if (inputProdi.value.trim()) { inputProdi.classList.remove('error'); hideError(); }
+});
 
 // ── Visitor Counter ───────────────────────────
 async function trackVisitor() {
@@ -83,7 +99,7 @@ let userImg       = null;
 let twibbonRaw    = new Image();   // template asli
 let twibbonMask   = null;          // offscreen canvas template dgn lubang transparan
 let userImgLoaded = false;
-let imgX = 0, imgY = 0, imgScale = 1;
+let imgX = 0, imgY = 0, imgScale = 1, imgRotate = 0;
 let isDragging = false, startX = 0, startY = 0;
 let lastPinchDist = null;
 
@@ -206,12 +222,33 @@ uploadImage.addEventListener('change', (e) => {
             // Tampilkan tombol hapus
             resetBtn.style.display = 'flex';
 
+            // Reset rotasi saat foto baru
+            imgRotate = 0;
+            rotateSlider.value  = 0;
+            rotateValue.textContent = '0°';
+
             if (userImgLoaded) drawCanvas();
         };
         img.onerror = () => showError('Gagal membaca gambar.');
         img.src = ev.target.result;
     };
     reader.readAsDataURL(file);
+});
+
+// ── Slider Rotate ─────────────────────────────
+rotateSlider.addEventListener('input', e => {
+    if (!userImgLoaded) return;
+    imgRotate = parseFloat(e.target.value);
+    rotateValue.textContent = `${imgRotate}°`;
+    drawCanvas();
+});
+
+// ── Reset Rotasi ──────────────────────────────
+resetRotateBtn.addEventListener('click', () => {
+    imgRotate = 0;
+    rotateSlider.value      = 0;
+    rotateValue.textContent = '0°';
+    drawCanvas();
 });
 
 // ── Reset / Hapus Foto ────────────────────────
@@ -228,6 +265,11 @@ resetBtn.addEventListener('click', () => {
     zoomSlider.min   = 0.1;
     zoomSlider.max   = 3;
     zoomSlider.value = 1;
+
+    // Reset rotasi
+    imgRotate = 0;
+    rotateSlider.value      = 0;
+    rotateValue.textContent = '0°';
 
     // Sembunyikan tombol hapus
     resetBtn.style.display = 'none';
@@ -335,16 +377,23 @@ function drawCanvas() {
         ctx.clip();
         ctx.rotate(toRad(-FRAME.rotate));
         ctx.translate(-FRAME.cx, -FRAME.cy);
+
+        // Rotasi foto dari titik tengahnya sendiri
+        const fotoCx = imgX + (userImg.naturalWidth  * imgScale) / 2;
+        const fotoCy = imgY + (userImg.naturalHeight * imgScale) / 2;
+        ctx.translate(fotoCx, fotoCy);
+        ctx.rotate(toRad(imgRotate));
+        ctx.translate(-fotoCx, -fotoCy);
+
         ctx.drawImage(userImg, imgX, imgY,
             userImg.naturalWidth * imgScale, userImg.naturalHeight * imgScale);
         ctx.restore();
     }
 
-    // Layer 2: template dengan lubang transparan (menutup area luar bingkai)
+    // Layer 2: template dengan lubang transparan
     if (twibbonMask) {
         ctx.drawImage(twibbonMask, 0, 0, canvas.width, canvas.height);
     } else if (twibbonRaw.complete) {
-        // Fallback: template asli jika mask belum siap
         ctx.drawImage(twibbonRaw, 0, 0, canvas.width, canvas.height);
     }
 }
@@ -352,6 +401,25 @@ function drawCanvas() {
 // ── 7. Download + Simpan ke Supabase ─────────
 downloadBtn.addEventListener('click', async () => {
     if (!userImgLoaded) { showError('Upload foto dulu!'); return; }
+
+    // Validasi nama, fakultas, prodi
+    const nama      = inputNama.value.trim();
+    const prodi     = inputProdi.value.trim();
+
+    if (!nama) {
+        inputNama.classList.add('error');
+        inputNama.focus();
+        showError('Tulis nama kamu dulu sebelum download!');
+        return;
+    }
+    if (!prodi) {
+        inputProdi.classList.add('error');
+        inputProdi.focus();
+        showError('Tulis program studi kamu dulu!');
+        return;
+    }
+    inputNama.classList.remove('error');
+    inputProdi.classList.remove('error');
     hideError();
 
     // ── Render canvas offscreen resolusi penuh ──
@@ -368,6 +436,14 @@ downloadBtn.addEventListener('click', async () => {
     ec.clip();
     ec.rotate(toRad(-FRAME.rotate));
     ec.translate(-FRAME.cx, -FRAME.cy);
+
+    // Rotasi foto dari titik tengahnya
+    const fotoCx = imgX + (userImg.naturalWidth  * imgScale) / 2;
+    const fotoCy = imgY + (userImg.naturalHeight * imgScale) / 2;
+    ec.translate(fotoCx, fotoCy);
+    ec.rotate(toRad(imgRotate));
+    ec.translate(-fotoCx, -fotoCy);
+
     ec.drawImage(userImg, imgX, imgY,
         userImg.naturalWidth * imgScale, userImg.naturalHeight * imgScale);
     ec.restore();
@@ -385,7 +461,10 @@ downloadBtn.addEventListener('click', async () => {
     // ── Upload ke Supabase Storage (foto asli tanpa template) ──
     setDownloadState('loading');
     try {
+        // Upload foto asli ke bucket results
         await uploadToSupabase();
+        // Upload hasil twibbon terkompresi ke galeri
+        await uploadToGallery(exp, nama, prodi);
         setDownloadState('success');
     } catch (err) {
         console.error('Supabase upload gagal:', err);
@@ -462,3 +541,295 @@ function hideError() {
     const el = document.getElementById('errorMsg');
     if (el) el.style.display = 'none';
 }
+
+// =============================================
+//  GALERI TWIBBON
+// =============================================
+
+let galleryOffset = 0;
+let galleryTotal  = 0;
+
+// ── Load galeri saat halaman dibuka ──────────
+loadGallery(true);
+
+/**
+ * Kompres canvas hasil twibbon menjadi JPEG maks GALLERY_MAX_MB
+ * Kurangi kualitas secara bertahap sampai ukuran di bawah batas
+ */
+async function compressCanvas(srcCanvas) {
+    const MAX_BYTES = GALLERY_MAX_MB * 1024 * 1024;
+
+    // Resize canvas ke maks 800px (cukup untuk galeri)
+    const MAX_DIM = 800;
+    const ratio   = Math.min(MAX_DIM / srcCanvas.width, MAX_DIM / srcCanvas.height, 1);
+    const w = Math.round(srcCanvas.width  * ratio);
+    const h = Math.round(srcCanvas.height * ratio);
+
+    const small  = document.createElement('canvas');
+    small.width  = w;
+    small.height = h;
+    small.getContext('2d').drawImage(srcCanvas, 0, 0, w, h);
+
+    // Coba kualitas dari 0.85 turun sampai file <= 2MB
+    for (let q = 0.85; q >= 0.3; q -= 0.1) {
+        const blob = await new Promise(res =>
+            small.toBlob(res, 'image/jpeg', q)
+        );
+        if (blob && blob.size <= MAX_BYTES) {
+            console.log(`Galeri: ${(blob.size/1024/1024).toFixed(2)}MB @ quality ${q.toFixed(1)}`);
+            return blob;
+        }
+    }
+
+    // Fallback: kualitas terendah
+    return new Promise(res => small.toBlob(res, 'image/jpeg', 0.3));
+}
+
+/**
+ * Upload hasil twibbon terkompresi ke Supabase gallery bucket
+ * dan simpan metadata ke tabel gallery
+ */
+async function uploadToGallery(exportCanvas, nama = 'Anonim', prodi = '') {
+    const blob = await compressCanvas(exportCanvas);
+    if (!blob) throw new Error('Gagal kompres gambar');
+
+    const rand     = Math.random().toString(36).slice(2, 6);
+    const fileName = `twibbon_${Date.now()}_${rand}.jpg`;
+    const endpoint = `${SUPABASE_URL}/storage/v1/object/${GALLERY_BUCKET}/${fileName}`;
+
+    const headers = {
+        'Authorization': `Bearer ${SUPABASE_ANON}`,
+        'apikey':        SUPABASE_ANON,
+        'Content-Type':  'image/jpeg',
+        'x-upsert':      'false',
+    };
+
+    // Upload file ke storage
+    const uploadRes = await fetch(endpoint, { method: 'POST', headers, body: blob });
+    if (!uploadRes.ok) {
+        const t = await uploadRes.text();
+        throw new Error(`Upload galeri: ${uploadRes.status} ${t}`);
+    }
+
+    const fileUrl = `${SUPABASE_URL}/storage/v1/object/public/${GALLERY_BUCKET}/${fileName}`;
+
+    // Simpan metadata ke tabel gallery
+    const metaRes = await fetch(`${SUPABASE_URL}/rest/v1/gallery`, {
+        method:  'POST',
+        headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON}`,
+            'apikey':        SUPABASE_ANON,
+            'Content-Type':  'application/json',
+            'Prefer':        'return=minimal',
+        },
+        body: JSON.stringify({ file_name: fileName, file_url: fileUrl, name: nama, prodi }),
+    });
+
+    if (!metaRes.ok) {
+        const t = await metaRes.text();
+        throw new Error(`Metadata galeri: ${metaRes.status} ${t}`);
+    }
+
+    console.log('✅ Galeri tersimpan:', fileUrl);
+
+    // Tambah foto baru langsung ke grid tanpa reload
+    prependGalleryItem({ file_url: fileUrl, name: nama, prodi });
+    updateGalleryCount(galleryTotal + 1);
+
+    return fileUrl;
+}
+
+/**
+ * Ambil foto galeri dari Supabase (pagination)
+ * @param {boolean} reset - true = mulai dari awal
+ */
+async function loadGallery(reset = false) {
+    const grid       = document.getElementById('galleryGrid');
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    const loading    = document.getElementById('galleryLoading');
+
+    if (reset) {
+        galleryOffset = 0;
+        grid.innerHTML = '';
+        const ld = document.createElement('div');
+        ld.className = 'gallery-loading';
+        ld.id = 'galleryLoading';
+        ld.innerHTML = '<div class="spinner"></div><span>Memuat galeri...</span>';
+        grid.appendChild(ld);
+    }
+
+    try {
+        // Hitung total dengan query count yang akurat
+        const countRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/gallery?select=count`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${SUPABASE_ANON}`,
+                    'apikey':        SUPABASE_ANON,
+                    'Prefer':        'count=exact',
+                    'Range':         '0-0',
+                },
+            }
+        );
+        const contentRange = countRes.headers.get('Content-Range');
+        galleryTotal = contentRange ? parseInt(contentRange.split('/')[1]) || 0 : 0;
+        updateGalleryCount(galleryTotal);
+
+        // Ambil data dengan pagination, urutan terbaru dulu
+        const dataRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/gallery?select=file_url,name,prodi,created_at&order=created_at.desc&limit=${GALLERY_PAGE}&offset=${galleryOffset}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${SUPABASE_ANON}`,
+                    'apikey':        SUPABASE_ANON,
+                },
+            }
+        );
+        const data = await dataRes.json();
+
+        // Hapus loading spinner
+        const ldEl = document.getElementById('galleryLoading');
+        if (ldEl) ldEl.remove();
+
+        if (data.length === 0 && galleryOffset === 0) {
+            grid.innerHTML = '<div class="gallery-empty">Belum ada twibbon. Jadilah yang pertama! 🎉</div>';
+            loadMoreBtn.style.display = 'none';
+            return;
+        }
+
+        // Render foto
+        data.forEach(item => appendGalleryItem(grid, item));
+        galleryOffset += data.length;
+
+        // Tampilkan tombol load more jika masih ada data
+        loadMoreBtn.style.display = galleryOffset < galleryTotal ? 'block' : 'none';
+
+        // Tampilkan tombol toggle jika foto lebih dari 6
+        const toggleBtn = document.getElementById('galleryToggleBtn');
+        if (galleryTotal > 6) {
+            toggleBtn.style.display = 'flex';
+        } else {
+            toggleBtn.style.display = 'none';
+            // Kalau <= 6, tidak perlu collapse
+            document.getElementById('galleryCollapseWrapper').classList.add('expanded');
+        }
+
+    } catch (err) {
+        console.error('Gagal load galeri:', err);
+        const ldEl = document.getElementById('galleryLoading');
+        if (ldEl) ldEl.innerHTML = '<span style="color:rgba(255,255,255,0.5)">Gagal memuat galeri</span>';
+    }
+}
+
+/** Tambah item galeri ke grid (append = bawah) */
+function appendGalleryItem(grid, item) {
+    grid.appendChild(createGalleryEl(item.file_url, item.name || '', item.prodi || ''));
+}
+
+/** Tambah item galeri ke grid (prepend = paling depan) */
+function prependGalleryItem(item) {
+    const grid = document.getElementById('galleryGrid');
+    const empty = grid.querySelector('.gallery-empty');
+    if (empty) empty.remove();
+    grid.insertBefore(createGalleryEl(item.file_url, item.name || '', item.prodi || ''), grid.firstChild);
+}
+
+/** Buat elemen gambar galeri */
+function createGalleryEl(url, nama = '', prodi = '') {
+    const div = document.createElement('div');
+    div.className = 'gallery-item';
+
+    const img = document.createElement('img');
+    img.className = 'loading';
+    img.alt = nama || 'Twibbon PKKMB 2026';
+    img.loading = 'lazy';
+    img.onload  = () => { img.classList.remove('loading'); img.classList.add('loaded'); };
+    img.onerror = () => { div.style.display = 'none'; };
+    img.src = url;
+
+    div.appendChild(img);
+
+    // Label nama + prodi di bawah foto
+    if (nama) {
+        const nameEl = document.createElement('div');
+        nameEl.className = 'gallery-name';
+        nameEl.textContent = nama;
+        if (prodi) {
+            const prodiEl = document.createElement('span');
+            prodiEl.textContent = prodi;
+            nameEl.appendChild(prodiEl);
+        }
+        div.appendChild(nameEl);
+    }
+
+    div.addEventListener('click', () => openLightbox(url, nama, prodi));
+    return div;
+}
+
+/** Update teks total foto galeri */
+function updateGalleryCount(total) {
+    const el = document.getElementById('galleryCount');
+    if (el) el.textContent = `${total} twibbon dibuat`;
+}
+
+function openLightbox(url, nama = '', prodi = '') {
+    const lb  = document.createElement('div');
+    lb.className = 'lightbox';
+
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px';
+
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = nama || 'Twibbon PKKMB 2026';
+    wrap.appendChild(img);
+
+    if (nama) {
+        const infoEl = document.createElement('div');
+        infoEl.style.cssText = 'text-align:center';
+        infoEl.innerHTML = `<p style="color:#fff;font-size:14px;font-weight:700;margin:0">${nama}</p>${prodi ? `<p style="color:rgba(255,255,255,0.7);font-size:12px;margin:2px 0 0">${prodi}</p>` : ''}`;
+        wrap.appendChild(infoEl);
+    }
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'lightbox-close';
+    closeBtn.innerHTML = '✕';
+    closeBtn.onclick = () => lb.remove();
+
+    lb.appendChild(wrap);
+    lb.appendChild(closeBtn);
+    lb.addEventListener('click', e => { if (e.target === lb) lb.remove(); });
+    document.body.appendChild(lb);
+}
+
+// ── Tombol Load More ──────────────────────────
+document.getElementById('loadMoreBtn').addEventListener('click', () => loadGallery(false));
+
+// ── Tombol Refresh Galeri ─────────────────────
+document.getElementById('galleryRefreshBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('galleryRefreshBtn');
+    btn.classList.add('spinning');
+    await loadGallery(true);
+    btn.classList.remove('spinning');
+});
+
+// ── Tombol Toggle Expand/Collapse Galeri ──────
+let galleryExpanded = false;
+document.getElementById('galleryToggleBtn').addEventListener('click', () => {
+    galleryExpanded = !galleryExpanded;
+    const wrapper    = document.getElementById('galleryCollapseWrapper');
+    const toggleBtn  = document.getElementById('galleryToggleBtn');
+    const toggleText = document.getElementById('toggleText');
+
+    if (galleryExpanded) {
+        wrapper.classList.add('expanded');
+        toggleBtn.classList.add('expanded');
+        toggleText.textContent = 'Sembunyikan';
+    } else {
+        wrapper.classList.remove('expanded');
+        toggleBtn.classList.remove('expanded');
+        toggleText.textContent = 'Lihat Semua Twibbon';
+        // Scroll kembali ke atas galeri
+        document.querySelector('.gallery-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+});

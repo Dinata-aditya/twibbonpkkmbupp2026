@@ -74,6 +74,34 @@
                     </div>
                 </div>
 
+                <!-- Rotate Slider -->
+                <div class="control-group">
+                    <div class="slider-header">
+                        <label for="rotateSlider">Putar Foto</label>
+                        <span class="hint" id="rotateValue">0°</span>
+                    </div>
+                    <div class="slider-track">
+                        <!-- Ikon putar kiri -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/></svg>
+                        <input type="range" id="rotateSlider" min="-180" max="180" step="1" value="0">
+                        <!-- Ikon putar kanan -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 15l6-6m0 0l-6-6m6 6H9a6 6 0 000 12h3"/></svg>
+                    </div>
+                    <!-- Tombol reset rotasi -->
+                    <button class="reset-rotate-btn" id="resetRotateBtn">Reset Rotasi</button>
+                </div>
+
+                <!-- Input Nama & Prodi -->
+                <div class="control-group">
+                    <label class="input-label">Data Diri</label>
+                    <div class="form-fields">
+                        <input type="text" id="inputNama" class="nama-input"
+                            placeholder="Nama lengkap..." maxlength="60" autocomplete="name">
+                        <input type="text" id="inputProdi" class="nama-input"
+                            placeholder="Program studi..." maxlength="60">
+                    </div>
+                </div>
+
                 <!-- Tombol Download -->
                 <button id="downloadBtn" class="download-btn">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -86,6 +114,46 @@
             </div>
 
         </main>
+
+        <!-- Galeri Twibbon -->
+        <section class="gallery-section">
+            <div class="gallery-header">
+                <h2>Galeri Twibbon</h2>
+                <p>Maba yang sudah buat twibbon PKKMB 2026</p>
+                <div class="gallery-header-row">
+                    <span class="gallery-count" id="galleryCount">Memuat...</span>
+                    <button class="gallery-refresh-btn" id="galleryRefreshBtn" title="Refresh galeri">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Grid dibungkus wrapper untuk collapse/expand -->
+            <div class="gallery-collapse-wrapper" id="galleryCollapseWrapper">
+                <div class="gallery-grid" id="galleryGrid">
+                    <div class="gallery-loading" id="galleryLoading">
+                        <div class="spinner"></div>
+                        <span>Memuat galeri...</span>
+                    </div>
+                </div>
+                <!-- Gradasi penutup saat collapsed -->
+                <div class="gallery-fade" id="galleryFade"></div>
+            </div>
+
+            <!-- Tombol expand/collapse -->
+            <button class="gallery-toggle-btn" id="galleryToggleBtn" style="display:none">
+                <svg id="toggleIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                </svg>
+                <span id="toggleText">Lihat Semua Twibbon</span>
+            </button>
+
+            <button class="load-more-btn" id="loadMoreBtn" style="display:none">
+                Lihat Lebih Banyak
+            </button>
+        </section>
 
         <footer class="site-footer">
             <div class="social-links">
