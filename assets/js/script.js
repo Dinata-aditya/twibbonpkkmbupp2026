@@ -1,0 +1,464 @@
+// =============================================
+//  TWIBBON PKKMB 2026 - Script Utama
+// =============================================
+
+// ── KONFIGURASI SUPABASE ──────────────────────
+const SUPABASE_URL    = 'https://mwqkzuodfpzrpnjijqnz.supabase.co';
+const SUPABASE_ANON   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im13cWt6dW9kZnB6cnBuamlqcW56Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyNDM1MTAsImV4cCI6MjEwMjgxOTUxMH0.1coY9tNoI9WcOZ6zzlwqYd6umDnf2TPJzTYq7wVsvr4';
+const BUCKET_NAME     = 'twibbon-results';
+// ─────────────────────────────────────────────
+
+const canvas = document.getElementById('twibbonCanvas');
+const ctx    = canvas.getContext('2d');
+const uploadImage = document.getElementById('uploadImage');
+const zoomSlider  = document.getElementById('zoomSlider');
+const downloadBtn = document.getElementById('downloadBtn');
+const uploadLabel = document.getElementById('uploadLabel');
+const resetBtn    = document.getElementById('resetBtn');
+
+// ── KONFIGURASI BINGKAI ───────────────────────
+// Semua nilai piksel sesuai resolusi asli template
+const FRAME = {
+    cx:     1000,
+    cy:     1103,
+    w:      1021,
+    h:      976,
+    rotate: -5.5,   // derajat
+};
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+const toRad = d => d * Math.PI / 180;
+
+// ── Visitor Counter ───────────────────────────
+async function trackVisitor() {
+    try {
+        const headers = {
+            'apikey':        SUPABASE_ANON,
+            'Authorization': `Bearer ${SUPABASE_ANON}`,
+            'Content-Type':  'application/json',
+            'Prefer':        'return=representation',
+        };
+
+        // Increment count di Supabase via RPC update
+        const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/visitors?id=eq.1`,
+            {
+                method:  'PATCH',
+                headers: { ...headers, 'Prefer': 'return=representation' },
+                body:    JSON.stringify({ count: { increment: 1 } }),
+            }
+        );
+
+        // Jika PATCH gagal (Supabase tidak support increment langsung),
+        // ambil nilai lama dulu lalu update
+        if (!res.ok) {
+            const getRes  = await fetch(`${SUPABASE_URL}/rest/v1/visitors?id=eq.1&select=count`, { headers });
+            const getData = await getRes.json();
+            const current = getData[0]?.count ?? 0;
+            const newCount = current + 1;
+
+            await fetch(`${SUPABASE_URL}/rest/v1/visitors?id=eq.1`, {
+                method:  'PATCH',
+                headers: { ...headers, 'Prefer': 'return=minimal' },
+                body:    JSON.stringify({ count: newCount }),
+            });
+
+            document.getElementById('visitorCount').textContent = newCount.toLocaleString('id-ID');
+        } else {
+            const data = await res.json();
+            const count = data[0]?.count ?? 0;
+            document.getElementById('visitorCount').textContent = count.toLocaleString('id-ID');
+        }
+    } catch (err) {
+        console.warn('Visitor counter error:', err);
+        document.getElementById('visitorCount').textContent = '—';
+    }
+}
+
+// Jalankan saat halaman dibuka
+trackVisitor();
+
+// ── State ─────────────────────────────────────
+let userImg       = null;
+let twibbonRaw    = new Image();   // template asli
+let twibbonMask   = null;          // offscreen canvas template dgn lubang transparan
+let userImgLoaded = false;
+let imgX = 0, imgY = 0, imgScale = 1;
+let isDragging = false, startX = 0, startY = 0;
+let lastPinchDist = null;
+
+// ── 1. Load & Proses Template ─────────────────
+twibbonRaw.crossOrigin = 'anonymous';
+twibbonRaw.src = 'assets/img/pkkmb1.png';
+twibbonRaw.onload = () => {
+    canvas.width  = twibbonRaw.naturalWidth;
+    canvas.height = twibbonRaw.naturalHeight;
+
+    // Buat versi template dengan lubang transparan di bingkai
+    twibbonMask = buildMaskedTemplate(twibbonRaw);
+
+    drawCanvas();
+    console.log(`✅ Template loaded: ${canvas.width}×${canvas.height}`);
+};
+twibbonRaw.onerror = () => {
+    console.error('❌ Gagal load template: assets/img/pkkmb1.png');
+};
+
+/**
+ * Buat offscreen canvas dari template asli,
+ * lalu hapus (jadikan transparan) piksel di area bingkai polaroid
+ * menggunakan flood-fill dari titik tengah bingkai.
+ */
+function buildMaskedTemplate(srcImg) {
+    const oc  = document.createElement('canvas');
+    oc.width  = srcImg.naturalWidth;
+    oc.height = srcImg.naturalHeight;
+    const octx = oc.getContext('2d');
+
+    // Gambar template ke offscreen canvas
+    octx.drawImage(srcImg, 0, 0);
+
+    // Ambil seluruh pixel data
+    const idata  = octx.getImageData(0, 0, oc.width, oc.height);
+    const pixels = idata.data; // RGBA flat array
+
+    // Seed = titik tengah bingkai polaroid
+    const seedX = Math.round(FRAME.cx);
+    const seedY = Math.round(FRAME.cy);
+    const idx   = (seedY * oc.width + seedX) * 4;
+    const seedR = pixels[idx];
+    const seedG = pixels[idx + 1];
+    const seedB = pixels[idx + 2];
+    const TOL   = 35; // toleransi warna
+
+    console.log(`Seed pixel: R=${seedR} G=${seedG} B=${seedB}`);
+
+    // Flood fill BFS
+    const visited = new Uint8Array(oc.width * oc.height);
+    const queue   = [seedX, seedY];  // flat [x0,y0, x1,y1, ...]
+    let   qi      = 0;
+
+    while (qi < queue.length) {
+        const x = queue[qi++];
+        const y = queue[qi++];
+
+        if (x < 0 || x >= oc.width || y < 0 || y >= oc.height) continue;
+        const pos = y * oc.width + x;
+        if (visited[pos]) continue;
+        visited[pos] = 1;
+
+        const pi = pos * 4;
+        const dr = Math.abs(pixels[pi]     - seedR);
+        const dg = Math.abs(pixels[pi + 1] - seedG);
+        const db = Math.abs(pixels[pi + 2] - seedB);
+
+        if (dr <= TOL && dg <= TOL && db <= TOL) {
+            // Jadikan transparan
+            pixels[pi + 3] = 0;
+
+            queue.push(x + 1, y, x - 1, y, x, y + 1, x, y - 1);
+        }
+    }
+
+    octx.putImageData(idata, 0, 0);
+    console.log(`✅ Mask dibuat, ${queue.length / 2} titik diproses`);
+    return oc;
+}
+
+// ── 2. Upload Foto ────────────────────────────
+uploadImage.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > MAX_FILE_SIZE) {
+        showError(`Ukuran foto ${(file.size/1024/1024).toFixed(1)} MB, melebihi batas 5 MB.`);
+        uploadImage.value = '';
+        return;
+    }
+    if (!file.type.match(/image\/(jpeg|png|webp)/)) {
+        showError('Format tidak didukung. Gunakan JPG, PNG, atau WEBP.');
+        uploadImage.value = '';
+        return;
+    }
+
+    hideError();
+    uploadLabel.textContent = `${file.name} · ${(file.size/1024/1024).toFixed(2)} MB`;
+
+    const reader = new FileReader();
+    reader.onload = ev => {
+        const img = new Image();
+        img.onload = () => {
+            userImg       = img;
+            userImgLoaded = true;
+
+            // Scale awal: foto cover seluruh bingkai
+            imgScale = Math.max(FRAME.w / img.naturalWidth, FRAME.h / img.naturalHeight);
+
+            zoomSlider.min   = (imgScale * 0.5).toFixed(5);
+            zoomSlider.max   = (imgScale * 4).toFixed(5);
+            zoomSlider.step  = 0.00001;
+            zoomSlider.value = imgScale;
+
+            // Posisi awal: foto di tengah bingkai
+            imgX = FRAME.cx - (img.naturalWidth  * imgScale) / 2;
+            imgY = FRAME.cy - (img.naturalHeight * imgScale) / 2;
+
+            // Tampilkan tombol hapus
+            resetBtn.style.display = 'flex';
+
+            if (userImgLoaded) drawCanvas();
+        };
+        img.onerror = () => showError('Gagal membaca gambar.');
+        img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+});
+
+// ── Reset / Hapus Foto ────────────────────────
+resetBtn.addEventListener('click', () => {
+    // Reset state foto
+    userImg       = null;
+    userImgLoaded = false;
+
+    // Reset input file agar bisa pilih file yang sama lagi
+    uploadImage.value = '';
+    uploadLabel.textContent = 'Belum ada foto dipilih';
+
+    // Reset zoom slider
+    zoomSlider.min   = 0.1;
+    zoomSlider.max   = 3;
+    zoomSlider.value = 1;
+
+    // Sembunyikan tombol hapus
+    resetBtn.style.display = 'none';
+
+    hideError();
+
+    // Gambar ulang canvas (hanya template, tanpa foto)
+    drawCanvas();
+});
+
+// ── 3. Slider Zoom ────────────────────────────
+zoomSlider.addEventListener('input', e => {
+    if (!userImgLoaded) return;
+    const ns = parseFloat(e.target.value);
+    // zoom dari pusat bingkai
+    imgX = FRAME.cx - (FRAME.cx - imgX) * (ns / imgScale);
+    imgY = FRAME.cy - (FRAME.cy - imgY) * (ns / imgScale);
+    imgScale = ns;
+    drawCanvas();
+});
+
+// ── 4. Mouse Drag ─────────────────────────────
+canvas.addEventListener('mousedown', e => {
+    if (!userImgLoaded) return;
+    isDragging = true;
+    startX = e.clientX; startY = e.clientY;
+    canvas.style.cursor = 'grabbing';
+});
+canvas.addEventListener('mousemove', e => {
+    if (!isDragging || !userImgLoaded) return;
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.width  / rect.width;
+    const sy = canvas.height / rect.height;
+    imgX += (e.clientX - startX) * sx;
+    imgY += (e.clientY - startY) * sy;
+    startX = e.clientX; startY = e.clientY;
+    drawCanvas();
+});
+canvas.addEventListener('mouseup',    () => { isDragging = false; canvas.style.cursor = 'grab'; });
+canvas.addEventListener('mouseleave', () => { isDragging = false; canvas.style.cursor = 'grab'; });
+
+// ── 5. Touch Drag + Pinch Zoom ────────────────
+canvas.addEventListener('touchstart', e => {
+    if (!userImgLoaded) return;
+    e.preventDefault();
+    if (e.touches.length === 1) {
+        isDragging = true;
+        const r = canvas.getBoundingClientRect();
+        startX = e.touches[0].clientX - r.left;
+        startY = e.touches[0].clientY - r.top;
+    } else if (e.touches.length === 2) {
+        isDragging = false;
+        lastPinchDist = pinchDist(e.touches);
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+    if (!userImgLoaded) return;
+    e.preventDefault();
+    if (e.touches.length === 1 && isDragging) {
+        const r  = canvas.getBoundingClientRect();
+        const tx = e.touches[0].clientX - r.left;
+        const ty = e.touches[0].clientY - r.top;
+        const sx = canvas.width  / r.width;
+        const sy = canvas.height / r.height;
+        imgX += (tx - startX) * sx;
+        imgY += (ty - startY) * sy;
+        startX = tx; startY = ty;
+        drawCanvas();
+    } else if (e.touches.length === 2) {
+        const nd = pinchDist(e.touches);
+        if (!lastPinchDist) { lastPinchDist = nd; return; }
+        const ratio = nd / lastPinchDist;
+        const ns = Math.min(Math.max(imgScale * ratio,
+            parseFloat(zoomSlider.min)), parseFloat(zoomSlider.max));
+        const r   = canvas.getBoundingClientRect();
+        const mx  = ((e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left) * (canvas.width  / r.width);
+        const my  = ((e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top)  * (canvas.height / r.height);
+        imgX = mx - (mx - imgX) * (ns / imgScale);
+        imgY = my - (my - imgY) * (ns / imgScale);
+        imgScale = ns;
+        zoomSlider.value = ns;
+        lastPinchDist = nd;
+        drawCanvas();
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => { isDragging = false; lastPinchDist = null; });
+
+function pinchDist(t) {
+    return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+}
+
+// ── 6. Draw Canvas ────────────────────────────
+function drawCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Layer 1: foto user — di-clip ke area bingkai (rotated)
+    if (userImgLoaded) {
+        ctx.save();
+        ctx.translate(FRAME.cx, FRAME.cy);
+        ctx.rotate(toRad(FRAME.rotate));
+        ctx.beginPath();
+        ctx.rect(-FRAME.w / 2, -FRAME.h / 2, FRAME.w, FRAME.h);
+        ctx.clip();
+        ctx.rotate(toRad(-FRAME.rotate));
+        ctx.translate(-FRAME.cx, -FRAME.cy);
+        ctx.drawImage(userImg, imgX, imgY,
+            userImg.naturalWidth * imgScale, userImg.naturalHeight * imgScale);
+        ctx.restore();
+    }
+
+    // Layer 2: template dengan lubang transparan (menutup area luar bingkai)
+    if (twibbonMask) {
+        ctx.drawImage(twibbonMask, 0, 0, canvas.width, canvas.height);
+    } else if (twibbonRaw.complete) {
+        // Fallback: template asli jika mask belum siap
+        ctx.drawImage(twibbonRaw, 0, 0, canvas.width, canvas.height);
+    }
+}
+
+// ── 7. Download + Simpan ke Supabase ─────────
+downloadBtn.addEventListener('click', async () => {
+    if (!userImgLoaded) { showError('Upload foto dulu!'); return; }
+    hideError();
+
+    // ── Render canvas offscreen resolusi penuh ──
+    const exp    = document.createElement('canvas');
+    exp.width    = canvas.width;
+    exp.height   = canvas.height;
+    const ec     = exp.getContext('2d');
+
+    ec.save();
+    ec.translate(FRAME.cx, FRAME.cy);
+    ec.rotate(toRad(FRAME.rotate));
+    ec.beginPath();
+    ec.rect(-FRAME.w / 2, -FRAME.h / 2, FRAME.w, FRAME.h);
+    ec.clip();
+    ec.rotate(toRad(-FRAME.rotate));
+    ec.translate(-FRAME.cx, -FRAME.cy);
+    ec.drawImage(userImg, imgX, imgY,
+        userImg.naturalWidth * imgScale, userImg.naturalHeight * imgScale);
+    ec.restore();
+
+    if (twibbonMask) ec.drawImage(twibbonMask, 0, 0, exp.width, exp.height);
+    else              ec.drawImage(twibbonRaw,  0, 0, exp.width, exp.height);
+
+    // ── Download ke perangkat ──
+    const dataUrl = exp.toDataURL('image/png');
+    const link    = document.createElement('a');
+    link.download = 'Twibbon-PKKMB-2026.png';
+    link.href     = dataUrl;
+    link.click();
+
+    // ── Upload ke Supabase Storage (foto asli tanpa template) ──
+    setDownloadState('loading');
+    try {
+        await uploadToSupabase();
+        setDownloadState('success');
+    } catch (err) {
+        console.error('Supabase upload gagal:', err);
+        setDownloadState('error', err.message);
+    }
+});
+
+/**
+ * Upload foto ASLI user (tanpa template twibbon) ke Supabase Storage
+ * Menggunakan file langsung dari input, bukan dari canvas
+ */
+async function uploadToSupabase() {
+    // Ambil file asli dari input
+    const file = uploadImage.files[0];
+    if (!file) throw new Error('File tidak ditemukan');
+
+    // Nama file unik: timestamp + random 4 char + ekstensi asli
+    const ext      = file.name.split('.').pop().toLowerCase();
+    const rand     = Math.random().toString(36).slice(2, 6);
+    const fileName = `foto_${Date.now()}_${rand}.${ext}`;
+    const endpoint = `${SUPABASE_URL}/storage/v1/object/${BUCKET_NAME}/${fileName}`;
+
+    const res = await fetch(endpoint, {
+        method:  'POST',
+        headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON}`,
+            'apikey':        SUPABASE_ANON,
+            'Content-Type':  file.type,
+            'x-upsert':      'false',
+        },
+        body: file,  // langsung upload file asli
+    });
+
+    const text = await res.text();
+    if (!res.ok) throw new Error(`${res.status}: ${text}`);
+
+    const fileUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/${fileName}`;
+    console.log('✅ Foto asli tersimpan:', fileUrl);
+    return fileUrl;
+}
+
+/** Ubah tampilan tombol download sesuai state */
+function setDownloadState(state, errMsg = '') {
+    const btn = document.getElementById('downloadBtn');
+    if (state === 'loading') {
+        btn.disabled = true;
+        btn.innerHTML = `<svg class="spin" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Menyimpan...`;
+    } else if (state === 'success') {
+        btn.disabled = false;
+        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Tersimpan!`;
+        setTimeout(() => {
+            btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg> Download Twibbon (PNG Kualitas Penuh)`;
+        }, 3000);
+    } else if (state === 'error') {
+        btn.disabled = false;
+        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg> Download Twibbon (PNG Kualitas Penuh)`;
+        showError(`Download berhasil, tapi gagal simpan ke server: ${errMsg}`);
+    }
+}
+
+// ── Helper Error ──────────────────────────────
+function showError(msg) {
+    let el = document.getElementById('errorMsg');
+    if (!el) {
+        el = document.createElement('p');
+        el.id = 'errorMsg';
+        el.style.cssText = 'color:#dc2626;font-size:13px;text-align:center;background:#fef2f2;padding:8px 12px;border-radius:8px;border:1px solid #fecaca;margin:0';
+        document.querySelector('.controls').prepend(el);
+    }
+    el.textContent   = msg;
+    el.style.display = 'block';
+}
+function hideError() {
+    const el = document.getElementById('errorMsg');
+    if (el) el.style.display = 'none';
+}
