@@ -104,21 +104,30 @@ let isDragging = false, startX = 0, startY = 0;
 let lastPinchDist = null;
 
 // ── 1. Load & Proses Template ─────────────────
-twibbonRaw.crossOrigin = 'anonymous';
-twibbonRaw.src = 'assets/img/pkkmb1.png';
-twibbonRaw.onload = () => {
-    canvas.width  = twibbonRaw.naturalWidth;
-    canvas.height = twibbonRaw.naturalHeight;
+// ── 1. Load & Proses Template ─────────────────
+// Coba WebP dulu (58% lebih ringan), fallback ke PNG
+function loadTemplate() {
+    return new Promise((resolve) => {
+        const webp = new Image();
+        webp.onload  = () => resolve(webp);
+        webp.onerror = () => {
+            const png = new Image();
+            png.onload  = () => resolve(png);
+            png.onerror = () => console.error('❌ Gagal load template');
+            png.src = 'assets/img/pkkmb1.png';
+        };
+        webp.src = 'assets/img/pkkmb1.webp';
+    });
+}
 
-    // Buat versi template dengan lubang transparan di bingkai
-    twibbonMask = buildMaskedTemplate(twibbonRaw);
-
+loadTemplate().then(img => {
+    twibbonRaw    = img;
+    canvas.width  = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    twibbonMask   = buildMaskedTemplate(img);
     drawCanvas();
     console.log(`✅ Template loaded: ${canvas.width}×${canvas.height}`);
-};
-twibbonRaw.onerror = () => {
-    console.error('❌ Gagal load template: assets/img/pkkmb1.png');
-};
+});
 
 /**
  * Buat offscreen canvas dari template asli,
