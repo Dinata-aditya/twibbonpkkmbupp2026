@@ -27,11 +27,11 @@ const inputProdi     = document.getElementById('inputProdi');
 // ── KONFIGURASI BINGKAI ───────────────────────
 // Semua nilai piksel sesuai resolusi asli template
 const FRAME = {
-    cx:     1000,
-    cy:     1103,
-    w:      1021,
-    h:      976,
-    rotate: -5.5,   // derajat
+    cx:     1069,
+    cy:     1169,
+    w:      1085,
+    h:      1036,
+    rotate: -5.5,
 };
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
