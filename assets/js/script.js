@@ -130,64 +130,29 @@ loadTemplate().then(img => {
 });
 
 /**
- * Buat offscreen canvas dari template asli,
- * lalu hapus (jadikan transparan) piksel di area bingkai polaroid
- * menggunakan flood-fill dari titik tengah bingkai.
+ * Buat offscreen canvas template dengan lubang transparan di area bingkai
+ * menggunakan destination-out compositing — akurat 100% tanpa flood fill
  */
 function buildMaskedTemplate(srcImg) {
-    const oc  = document.createElement('canvas');
-    oc.width  = srcImg.naturalWidth;
-    oc.height = srcImg.naturalHeight;
+    const oc   = document.createElement('canvas');
+    oc.width   = srcImg.naturalWidth;
+    oc.height  = srcImg.naturalHeight;
     const octx = oc.getContext('2d');
 
-    // Gambar template ke offscreen canvas
+    // Gambar template asli
     octx.drawImage(srcImg, 0, 0);
 
-    // Ambil seluruh pixel data
-    const idata  = octx.getImageData(0, 0, oc.width, oc.height);
-    const pixels = idata.data; // RGBA flat array
+    // Hapus area bingkai dengan destination-out
+    // (menggambar di area ini akan menghapus pixel menjadi transparan)
+    octx.save();
+    octx.globalCompositeOperation = 'destination-out';
+    octx.translate(FRAME.cx, FRAME.cy);
+    octx.rotate(toRad(FRAME.rotate));
+    octx.fillStyle = 'rgba(0,0,0,1)';
+    octx.fillRect(-FRAME.w / 2, -FRAME.h / 2, FRAME.w, FRAME.h);
+    octx.restore();
 
-    // Seed = titik yang pasti ada di dalam area kosong bingkai
-    // Gunakan titik atas-kiri bingkai (bukan center) agar tidak kena elemen lain
-    const seedX = Math.round(FRAME.cx - FRAME.w * 0.25);
-    const seedY = Math.round(FRAME.cy - FRAME.h * 0.3);
-    const idx   = (seedY * oc.width + seedX) * 4;
-    const seedR = pixels[idx];
-    const seedG = pixels[idx + 1];
-    const seedB = pixels[idx + 2];
-    const TOL   = 40; // toleransi warna
-
-    console.log(`Seed pixel: R=${seedR} G=${seedG} B=${seedB}`);
-
-    // Flood fill BFS
-    const visited = new Uint8Array(oc.width * oc.height);
-    const queue   = [seedX, seedY];  // flat [x0,y0, x1,y1, ...]
-    let   qi      = 0;
-
-    while (qi < queue.length) {
-        const x = queue[qi++];
-        const y = queue[qi++];
-
-        if (x < 0 || x >= oc.width || y < 0 || y >= oc.height) continue;
-        const pos = y * oc.width + x;
-        if (visited[pos]) continue;
-        visited[pos] = 1;
-
-        const pi = pos * 4;
-        const dr = Math.abs(pixels[pi]     - seedR);
-        const dg = Math.abs(pixels[pi + 1] - seedG);
-        const db = Math.abs(pixels[pi + 2] - seedB);
-
-        if (dr <= TOL && dg <= TOL && db <= TOL) {
-            // Jadikan transparan
-            pixels[pi + 3] = 0;
-
-            queue.push(x + 1, y, x - 1, y, x, y + 1, x, y - 1);
-        }
-    }
-
-    octx.putImageData(idata, 0, 0);
-    console.log(`✅ Mask dibuat, ${queue.length / 2} titik diproses`);
+    console.log('✅ Mask dibuat dengan destination-out');
     return oc;
 }
 
