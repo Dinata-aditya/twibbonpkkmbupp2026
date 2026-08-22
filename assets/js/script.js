@@ -197,10 +197,10 @@ uploadImage.addEventListener('change', (e) => {
             // Tampilkan tombol hapus
             resetBtn.style.display = 'flex';
 
-            // Reset rotasi saat foto baru
-            imgRotate = 0;
-            rotateSlider.value  = 0;
-            rotateValue.textContent = '0°';
+            // Reset rotasi saat foto baru — ikuti kemiringan bingkai
+            imgRotate = FRAME.rotate;
+            rotateSlider.value      = FRAME.rotate;
+            rotateValue.textContent = `${FRAME.rotate}°`;
 
             if (userImgLoaded) drawCanvas();
         };
@@ -220,9 +220,9 @@ rotateSlider.addEventListener('input', e => {
 
 // ── Reset Rotasi ──────────────────────────────
 resetRotateBtn.addEventListener('click', () => {
-    imgRotate = 0;
-    rotateSlider.value      = 0;
-    rotateValue.textContent = '0°';
+    imgRotate = FRAME.rotate;
+    rotateSlider.value      = FRAME.rotate;
+    rotateValue.textContent = `${FRAME.rotate}°`;
     drawCanvas();
 });
 
@@ -242,9 +242,9 @@ resetBtn.addEventListener('click', () => {
     zoomSlider.value = 1;
 
     // Reset rotasi
-    imgRotate = 0;
-    rotateSlider.value      = 0;
-    rotateValue.textContent = '0°';
+    imgRotate = FRAME.rotate;
+    rotateSlider.value      = FRAME.rotate;
+    rotateValue.textContent = `${FRAME.rotate}°`;
 
     // Sembunyikan tombol hapus
     resetBtn.style.display = 'none';
