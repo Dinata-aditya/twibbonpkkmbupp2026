@@ -269,11 +269,18 @@ zoomSlider.addEventListener('input', e => {
 // ── 4. Mouse Drag ─────────────────────────────
 canvas.addEventListener('mousedown', e => {
     if (!userImgLoaded) return;
+    const pos = toCanvasCoords(e.clientX, e.clientY);
+    if (!isInsideFrame(pos.x, pos.y)) return; // hanya drag jika klik di dalam bingkai
     isDragging = true;
     startX = e.clientX; startY = e.clientY;
     canvas.style.cursor = 'grabbing';
 });
 canvas.addEventListener('mousemove', e => {
+    const pos = toCanvasCoords(e.clientX, e.clientY);
+    // Ubah cursor saat hover di dalam bingkai
+    if (!isDragging && userImgLoaded) {
+        canvas.style.cursor = isInsideFrame(pos.x, pos.y) ? 'grab' : 'default';
+    }
     if (!isDragging || !userImgLoaded) return;
     const rect = canvas.getBoundingClientRect();
     const sx = canvas.width  / rect.width;
@@ -283,14 +290,16 @@ canvas.addEventListener('mousemove', e => {
     startX = e.clientX; startY = e.clientY;
     drawCanvas();
 });
-canvas.addEventListener('mouseup',    () => { isDragging = false; canvas.style.cursor = 'grab'; });
-canvas.addEventListener('mouseleave', () => { isDragging = false; canvas.style.cursor = 'grab'; });
+canvas.addEventListener('mouseup',    () => { isDragging = false; });
+canvas.addEventListener('mouseleave', () => { isDragging = false; canvas.style.cursor = 'default'; });
 
 // ── 5. Touch Drag + Pinch Zoom ────────────────
 canvas.addEventListener('touchstart', e => {
     if (!userImgLoaded) return;
     e.preventDefault();
     if (e.touches.length === 1) {
+        const pos = toCanvasCoords(e.touches[0].clientX, e.touches[0].clientY);
+        if (!isInsideFrame(pos.x, pos.y)) return; // hanya drag jika sentuh di dalam bingkai
         isDragging = true;
         const r = canvas.getBoundingClientRect();
         startX = e.touches[0].clientX - r.left;
@@ -336,6 +345,30 @@ canvas.addEventListener('touchend', () => { isDragging = false; lastPinchDist = 
 
 function pinchDist(t) {
     return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+}
+
+/**
+ * Cek apakah titik (px, py) dalam koordinat canvas
+ * berada di dalam area bingkai FRAME (dengan rotasi)
+ */
+function isInsideFrame(px, py) {
+    const dx  = px - FRAME.cx;
+    const dy  = py - FRAME.cy;
+    const rad = toRad(-FRAME.rotate);
+    const rx  = dx * Math.cos(rad) - dy * Math.sin(rad);
+    const ry  = dx * Math.sin(rad) + dy * Math.cos(rad);
+    return Math.abs(rx) <= FRAME.w / 2 && Math.abs(ry) <= FRAME.h / 2;
+}
+
+/**
+ * Konversi clientX/Y ke koordinat canvas
+ */
+function toCanvasCoords(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+        x: (clientX - rect.left) * (canvas.width  / rect.width),
+        y: (clientY - rect.top)  * (canvas.height / rect.height),
+    };
 }
 
 // ── 6. Draw Canvas ────────────────────────────
