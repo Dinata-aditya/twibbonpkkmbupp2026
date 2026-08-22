@@ -18,9 +18,11 @@ const zoomSlider  = document.getElementById('zoomSlider');
 const downloadBtn = document.getElementById('downloadBtn');
 const uploadLabel = document.getElementById('uploadLabel');
 const resetBtn       = document.getElementById('resetBtn');
-const rotateSlider   = document.getElementById('rotateSlider');
-const rotateValue    = document.getElementById('rotateValue');
-const resetRotateBtn = document.getElementById('resetRotateBtn');
+// Slider zoom & rotasi disembunyikan dari UI tapi tetap dipakai oleh logika pinch/drag
+const zoomSlider     = { value: 1, min: 0.1, max: 3 }; // virtual slider
+const rotateSlider   = { value: FRAME.rotate };
+const rotateValue    = null; // tidak ada di UI
+const resetRotateBtn = null; // tidak ada di UI
 const inputNama      = document.getElementById('inputNama');
 const inputProdi     = document.getElementById('inputProdi');
 
@@ -199,8 +201,7 @@ uploadImage.addEventListener('change', (e) => {
 
             // Reset rotasi saat foto baru — ikuti kemiringan bingkai
             imgRotate = FRAME.rotate;
-            rotateSlider.value      = FRAME.rotate;
-            rotateValue.textContent = `${FRAME.rotate}°`;
+            rotateSlider.value = FRAME.rotate;
 
             if (userImgLoaded) drawCanvas();
         };
@@ -210,21 +211,8 @@ uploadImage.addEventListener('change', (e) => {
     reader.readAsDataURL(file);
 });
 
-// ── Slider Rotate ─────────────────────────────
-rotateSlider.addEventListener('input', e => {
-    if (!userImgLoaded) return;
-    imgRotate = parseFloat(e.target.value);
-    rotateValue.textContent = `${imgRotate}°`;
-    drawCanvas();
-});
-
-// ── Reset Rotasi ──────────────────────────────
-resetRotateBtn.addEventListener('click', () => {
-    imgRotate = FRAME.rotate;
-    rotateSlider.value      = FRAME.rotate;
-    rotateValue.textContent = `${FRAME.rotate}°`;
-    drawCanvas();
-});
+// ── Slider Rotate (disembunyikan dari UI, logika tetap jalan) ────
+// rotateSlider & rotateValue adalah virtual object, tidak ada di DOM
 
 // ── Reset / Hapus Foto ────────────────────────
 resetBtn.addEventListener('click', () => {
