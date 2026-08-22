@@ -147,14 +147,15 @@ function buildMaskedTemplate(srcImg) {
     const idata  = octx.getImageData(0, 0, oc.width, oc.height);
     const pixels = idata.data; // RGBA flat array
 
-    // Seed = titik tengah bingkai polaroid
-    const seedX = Math.round(FRAME.cx);
-    const seedY = Math.round(FRAME.cy);
+    // Seed = titik yang pasti ada di dalam area kosong bingkai
+    // Gunakan titik atas-kiri bingkai (bukan center) agar tidak kena elemen lain
+    const seedX = Math.round(FRAME.cx - FRAME.w * 0.25);
+    const seedY = Math.round(FRAME.cy - FRAME.h * 0.3);
     const idx   = (seedY * oc.width + seedX) * 4;
     const seedR = pixels[idx];
     const seedG = pixels[idx + 1];
     const seedB = pixels[idx + 2];
-    const TOL   = 35; // toleransi warna
+    const TOL   = 40; // toleransi warna
 
     console.log(`Seed pixel: R=${seedR} G=${seedG} B=${seedB}`);
 
