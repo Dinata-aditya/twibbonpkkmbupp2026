@@ -189,15 +189,19 @@ canvas.addEventListener('mouseleave', () => { isDragging = false; canvas.style.c
 // ── TOUCH DRAG + PINCH ZOOM ───────────────────
 canvas.addEventListener('touchstart', e => {
     if (!userImgLoaded) return;
-    e.preventDefault();
+
     if (e.touches.length === 1) {
         const pos = toCanvasCoords(e.touches[0].clientX, e.touches[0].clientY);
+        // Hanya block scroll jika sentuh di dalam bingkai
         if (!isInsideFrame(pos.x, pos.y)) return;
+        e.preventDefault();
         isDragging = true;
         const r = canvas.getBoundingClientRect();
         startX = e.touches[0].clientX - r.left;
         startY = e.touches[0].clientY - r.top;
     } else if (e.touches.length === 2) {
+        // Pinch zoom selalu block scroll
+        e.preventDefault();
         isDragging = false;
         lastPinchDist = pinchDist(e.touches);
     }
@@ -205,8 +209,8 @@ canvas.addEventListener('touchstart', e => {
 
 canvas.addEventListener('touchmove', e => {
     if (!userImgLoaded) return;
-    e.preventDefault();
     if (e.touches.length === 1 && isDragging) {
+        e.preventDefault();
         const r  = canvas.getBoundingClientRect();
         const tx = e.touches[0].clientX - r.left;
         const ty = e.touches[0].clientY - r.top;
@@ -215,6 +219,7 @@ canvas.addEventListener('touchmove', e => {
         startX = tx; startY = ty;
         drawCanvas();
     } else if (e.touches.length === 2) {
+        e.preventDefault();
         const nd = pinchDist(e.touches);
         if (!lastPinchDist) { lastPinchDist = nd; return; }
         const ns = Math.min(Math.max(imgScale * (nd / lastPinchDist), zoom.min), zoom.max);
