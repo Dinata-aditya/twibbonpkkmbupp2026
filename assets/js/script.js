@@ -333,12 +333,13 @@ downloadBtn.addEventListener('click', async () => {
 
     setDownloadState('loading');
     try {
-        await uploadToSupabase();
+        // Hanya upload ke galeri, tidak simpan foto asli agar hemat storage
         await uploadToGallery(exp, nama, prodi);
         setDownloadState('success');
     } catch (err) {
         console.error(err);
-        setDownloadState('error', err.message);
+        // Download sudah berhasil, gagal simpan ke galeri tidak perlu tampil error besar
+        setDownloadState('done');
     }
 });
 
@@ -357,17 +358,19 @@ async function uploadToSupabase() {
 function setDownloadState(state, errMsg = '') {
     const btn = document.getElementById('downloadBtn');
     const iconDown = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>';
+    const labelNormal = iconDown + ' Download Twibbon (PNG Kualitas Penuh)';
+
     if (state === 'loading') {
         btn.disabled = true;
         btn.innerHTML = '<svg class="spin" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Menyimpan...';
     } else if (state === 'success') {
         btn.disabled = false;
         btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Tersimpan!';
-        setTimeout(() => { btn.innerHTML = iconDown + ' Download Twibbon (PNG Kualitas Penuh)'; }, 3000);
+        setTimeout(() => { btn.innerHTML = labelNormal; }, 3000);
     } else {
+        // 'done' atau 'error' — download sudah berhasil, reset tombol saja
         btn.disabled = false;
-        btn.innerHTML = iconDown + ' Download Twibbon (PNG Kualitas Penuh)';
-        if (errMsg) showError('Download berhasil, tapi gagal simpan: ' + errMsg);
+        btn.innerHTML = labelNormal;
     }
 }
 
