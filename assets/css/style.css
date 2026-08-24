@@ -163,7 +163,7 @@ canvas {
     height: auto;
     display: block;
     cursor: grab;
-    touch-action: none;
+    touch-action: pan-y; /* izinkan scroll vertikal, JS handle drag di dalam bingkai */
     position: relative;
     z-index: 1;
 }

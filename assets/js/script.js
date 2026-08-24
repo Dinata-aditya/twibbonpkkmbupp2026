@@ -210,7 +210,7 @@ canvas.addEventListener('touchstart', e => {
 canvas.addEventListener('touchmove', e => {
     if (!userImgLoaded) return;
     if (e.touches.length === 1 && isDragging) {
-        e.preventDefault();
+        e.preventDefault(); // block scroll hanya saat drag aktif
         const r  = canvas.getBoundingClientRect();
         const tx = e.touches[0].clientX - r.left;
         const ty = e.touches[0].clientY - r.top;
@@ -219,7 +219,7 @@ canvas.addEventListener('touchmove', e => {
         startX = tx; startY = ty;
         drawCanvas();
     } else if (e.touches.length === 2) {
-        e.preventDefault();
+        e.preventDefault(); // block scroll saat pinch zoom
         const nd = pinchDist(e.touches);
         if (!lastPinchDist) { lastPinchDist = nd; return; }
         const ns = Math.min(Math.max(imgScale * (nd / lastPinchDist), zoom.min), zoom.max);
@@ -232,6 +232,7 @@ canvas.addEventListener('touchmove', e => {
         lastPinchDist = nd;
         drawCanvas();
     }
+    // Jika tidak drag dan tidak pinch → tidak ada preventDefault → scroll normal
 }, { passive: false });
 
 canvas.addEventListener('touchend', () => { isDragging = false; lastPinchDist = null; });
