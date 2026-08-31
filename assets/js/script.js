@@ -49,17 +49,26 @@ trackVisitor();
 
 async function trackVisitor() {
     try {
-        const h = { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}`, 'Content-Type': 'application/json' };
-        const getRes  = await fetch(`${SUPABASE_URL}/rest/v1/visitors?id=eq.1&select=count`, { headers: h });
-        const getData = await getRes.json();
-        const current = getData[0]?.count ?? 0;
-        const newCount = current + 1;
-        await fetch(`${SUPABASE_URL}/rest/v1/visitors?id=eq.1`, {
-            method: 'PATCH', headers: { ...h, 'Prefer': 'return=minimal' },
-            body: JSON.stringify({ count: newCount }),
+        // Pakai RPC atomic increment — tidak bisa race condition
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/increment_visitor`, {
+            method: 'POST',
+            headers: {
+                'apikey':        SUPABASE_ANON,
+                'Authorization': `Bearer ${SUPABASE_ANON}`,
+                'Content-Type':  'application/json',
+            },
+            body: JSON.stringify({}),
         });
-        document.getElementById('visitorCount').textContent = newCount.toLocaleString('id-ID');
+
+        if (res.ok) {
+            const count = await res.json();
+            document.getElementById('visitorCount').textContent =
+                Number(count).toLocaleString('id-ID');
+        } else {
+            document.getElementById('visitorCount').textContent = '—';
+        }
     } catch (err) {
+        console.warn('Visitor counter error:', err);
         document.getElementById('visitorCount').textContent = '—';
     }
 }
