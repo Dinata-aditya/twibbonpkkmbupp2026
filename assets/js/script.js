@@ -470,7 +470,7 @@ async function loadGallery(reset) {
             grid.appendChild(createGalleryEl(item.file_url, item.name || '', item.prodi || ''));
         });
         galleryOffset += data.length;
-        loadMoreBtn.style.display = galleryOffset < galleryTotal ? 'block' : 'none';
+        loadMoreBtn.style.display = 'none'; // sembunyikan, pakai tombol Lihat Semua saja
 
         const toggleBtn = document.getElementById('galleryToggleBtn');
         if (galleryTotal > 6) {
@@ -557,16 +557,31 @@ document.getElementById('galleryRefreshBtn').addEventListener('click', async fun
     btn.classList.remove('spinning');
 });
 
-var galleryExpanded = false;
-document.getElementById('galleryToggleBtn').addEventListener('click', function() {
+let galleryExpanded = false;
+document.getElementById('galleryToggleBtn').addEventListener('click', async () => {
     galleryExpanded = !galleryExpanded;
     const wrapper    = document.getElementById('galleryCollapseWrapper');
     const toggleBtn  = document.getElementById('galleryToggleBtn');
     const toggleText = document.getElementById('toggleText');
+
     if (galleryExpanded) {
         wrapper.classList.add('expanded');
         toggleBtn.classList.add('expanded');
         toggleText.textContent = 'Sembunyikan';
+
+        // Load semua sisa data dulu kalau masih ada
+        while (galleryOffset < galleryTotal) {
+            await loadGallery(false);
+        }
+
+        // Sembunyikan tombol Load More karena sudah semua
+        document.getElementById('loadMoreBtn').style.display = 'none';
+
+        // Scroll ke bawah galeri setelah expand
+        setTimeout(() => {
+            wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 300);
+
     } else {
         wrapper.classList.remove('expanded');
         toggleBtn.classList.remove('expanded');
