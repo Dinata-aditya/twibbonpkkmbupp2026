@@ -358,40 +358,8 @@ downloadBtn.addEventListener('click', async () => {
 
     const dataUrl = exp.toDataURL('image/png');
 
-    // Deteksi HP (Android/iOS)
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-    if (isMobile) {
-        // Di HP: buka gambar di tab baru agar bisa disimpan dengan tekan lama
-        const win = window.open();
-        if (win) {
-            win.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta name="viewport" content="width=device-width, initial-scale=1">
-                    <title>Twibbon PKKMB 2026</title>
-                    <style>
-                        body { margin:0; background:#000; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; font-family:sans-serif; }
-                        img { max-width:100%; max-height:85vh; display:block; }
-                        p { color:#fff; font-size:14px; margin-top:16px; text-align:center; padding:0 20px; }
-                        strong { color:#fde68a; }
-                    </style>
-                </head>
-                <body>
-                    <img src="${dataUrl}" alt="Twibbon PKKMB 2026">
-                    <p><strong>Tekan lama pada foto</strong> lalu pilih <strong>"Simpan Gambar"</strong> untuk menyimpan ke galeri HP kamu</p>
-                </body>
-                </html>
-            `);
-            win.document.close();
-        } else {
-            // Popup diblokir, fallback ke download biasa
-            const link = document.createElement('a');
-            link.download = 'Twibbon-PKKMB-2026.png';
-            link.href = dataUrl;
-            link.click();
-        }
+    // Tampilkan modal di HP agar bisa simpan foto
+    if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) showSaveModal(dataUrl);
     } else {
         // Di desktop: download langsung
         const link = document.createElement('a');
