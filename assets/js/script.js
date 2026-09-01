@@ -356,16 +356,7 @@ downloadBtn.addEventListener('click', async () => {
     if (twibbonMask) ec.drawImage(twibbonMask, 0, 0, exp.width, exp.height);
     else              ec.drawImage(twibbonRaw,  0, 0, exp.width, exp.height);
 
-    // Resize ke maks 1080px untuk hemat ukuran file (~500KB-1MB)
-    const MAX_EXPORT = 1080;
-    const exportRatio = Math.min(MAX_EXPORT / exp.width, MAX_EXPORT / exp.height, 1);
-    const exportW = Math.round(exp.width  * exportRatio);
-    const exportH = Math.round(exp.height * exportRatio);
-    const resized = document.createElement('canvas');
-    resized.width  = exportW;
-    resized.height = exportH;
-    resized.getContext('2d').drawImage(exp, 0, 0, exportW, exportH);
-    const dataUrl = resized.toDataURL('image/jpeg', 0.92);
+    const dataUrl = exp.toDataURL('image/png');
 
     // Deteksi HP (Android/iOS)
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -397,14 +388,14 @@ downloadBtn.addEventListener('click', async () => {
         } else {
             // Popup diblokir, fallback ke download biasa
             const link = document.createElement('a');
-            link.download = 'Twibbon-PKKMB-2026.jpg';
+            link.download = 'Twibbon-PKKMB-2026.png';
             link.href = dataUrl;
             link.click();
         }
     } else {
         // Di desktop: download langsung
         const link = document.createElement('a');
-        link.download = 'Twibbon-PKKMB-2026.jpg';
+        link.download = 'Twibbon-PKKMB-2026.png';
         link.href = dataUrl;
         link.click();
     }
