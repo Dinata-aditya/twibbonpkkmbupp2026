@@ -789,3 +789,10 @@ input[type="range"]::-moz-range-thumb {
 .gallery-toggle-btn.expanded svg {
     transform: rotate(180deg);
 }
+
+.download-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    filter: none;
+    transform: none;
+}

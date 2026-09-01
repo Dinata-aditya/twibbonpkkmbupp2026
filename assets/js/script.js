@@ -36,10 +36,11 @@ const inputProdi  = document.getElementById('inputProdi');
 const zoom = { value: 1, min: 0.1, max: 3 };
 
 // ── STATE ─────────────────────────────────────
-let userImg       = null;
-let twibbonRaw    = new Image();
-let twibbonMask   = null;
-let userImgLoaded = false;
+let userImg        = null;
+let twibbonRaw     = new Image();
+let twibbonMask    = null;
+let twibbonReady   = false; // flag template sudah siap
+let userImgLoaded  = false;
 let imgX = 0, imgY = 0, imgScale = 1, imgRotate = FRAME.rotate;
 let isDragging = false, startX = 0, startY = 0;
 let lastPinchDist = null;
@@ -91,7 +92,10 @@ function initTemplate(img) {
     canvas.width  = img.naturalWidth;
     canvas.height = img.naturalHeight;
     twibbonMask   = buildMaskedTemplate(img);
+    twibbonReady  = true;
     drawCanvas();
+    // Pastikan tombol download aktif setelah template siap
+    document.getElementById('downloadBtn').disabled = false;
 }
 
 function buildMaskedTemplate(srcImg) {
@@ -299,6 +303,7 @@ function drawCanvas() {
 // ── DOWNLOAD + SUPABASE ───────────────────────
 downloadBtn.addEventListener('click', async () => {
     if (!userImgLoaded) { showError('Upload foto dulu!'); return; }
+    if (!twibbonReady)  { showError('Template belum siap, tunggu sebentar lalu coba lagi.'); return; }
 
     const nama  = inputNama.value.trim();
     const prodi = inputProdi.value.trim();
