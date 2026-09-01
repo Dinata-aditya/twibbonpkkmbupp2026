@@ -7,8 +7,8 @@ const SUPABASE_URL   = 'https://mwqkzuodfpzrpnjijqnz.supabase.co';
 const SUPABASE_ANON  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im13cWt6dW9kZnB6cnBuamlqcW56Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyNDM1MTAsImV4cCI6MjEwMjgxOTUxMH0.1coY9tNoI9WcOZ6zzlwqYd6umDnf2TPJzTYq7wVsvr4';
 const BUCKET_NAME    = 'twibbon-results';
 const GALLERY_BUCKET = 'twibbon-gallery';
-const GALLERY_MAX_MB = 2;
-const GALLERY_PAGE   = 12;
+const GALLERY_MAX_MB = 0.3;  // maks 300KB per foto galeri (hemat bandwidth)
+const GALLERY_PAGE   = 6;    // kurangi foto per halaman
 
 // ── KONFIGURASI BINGKAI ───────────────────────
 const FRAME = {
@@ -458,7 +458,7 @@ loadGallery(true);
 
 async function compressCanvas(srcCanvas) {
     const MAX_BYTES = GALLERY_MAX_MB * 1024 * 1024;
-    const MAX_DIM   = 800;
+    const MAX_DIM   = 400;  // resolusi kecil untuk thumbnail galeri
     const ratio     = Math.min(MAX_DIM / srcCanvas.width, MAX_DIM / srcCanvas.height, 1);
     const w = Math.round(srcCanvas.width * ratio), h = Math.round(srcCanvas.height * ratio);
     const small = document.createElement('canvas');
