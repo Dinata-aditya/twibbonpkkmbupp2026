@@ -1,4 +1,4 @@
-// =============================================
+﻿// =============================================
 //  TWIBBON PKKMB 2026 - Script Utama
 // =============================================
 
@@ -461,6 +461,34 @@ function hideError() {
     if (el) el.style.display = 'none';
 }
 
+// ── Modal Simpan Gambar (HP) ──────────────────
+function showSaveModal(dataUrl) {
+    const old = document.getElementById('saveModal');
+    if (old) old.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'saveModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;padding:20px;gap:16px';
+
+    const img = document.createElement('img');
+    img.src = dataUrl;
+    img.style.cssText = 'max-width:100%;max-height:60vh;border-radius:8px;display:block';
+
+    const info = document.createElement('p');
+    info.innerHTML = '👆 <strong style="color:#fde68a">Tekan lama pada foto</strong> lalu pilih<br><strong style="color:#fde68a">"Simpan Gambar"</strong> untuk menyimpan ke galeri HP';
+    info.style.cssText = 'color:#fff;font-size:14px;text-align:center;line-height:1.6;margin:0';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕ Tutup';
+    closeBtn.style.cssText = 'background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;font-size:14px;font-weight:600;padding:10px 28px;border-radius:100px;cursor:pointer';
+    closeBtn.onclick = () => modal.remove();
+
+    modal.appendChild(img);
+    modal.appendChild(info);
+    modal.appendChild(closeBtn);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    document.body.appendChild(modal);
+}
 // ── SCROLL KE GALERI ─────────────────────────
 function scrollToGallery() {
     const wrapper    = document.getElementById('galleryCollapseWrapper');
