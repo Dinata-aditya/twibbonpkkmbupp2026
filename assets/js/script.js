@@ -367,8 +367,8 @@ downloadBtn.addEventListener('click', async () => {
         await uploadToGallery(exp, nama, prodi);
         setDownloadState('success');
 
-        // Expand galeri dan scroll ke sana otomatis
-        scrollToGallery();
+        // Expand galeri dan scroll ke foto baru (delay agar prepend selesai dulu)
+        setTimeout(() => scrollToGallery(), 100);
     } catch (err) {
         console.error(err);
         // Download sudah berhasil, gagal simpan ke galeri tidak perlu tampil error besar
@@ -424,22 +424,27 @@ function hideError() {
 
 // ── SCROLL KE GALERI ─────────────────────────
 function scrollToGallery() {
-    // Expand galeri jika belum
-    const wrapper   = document.getElementById('galleryCollapseWrapper');
-    const toggleBtn = document.getElementById('galleryToggleBtn');
+    const wrapper    = document.getElementById('galleryCollapseWrapper');
+    const toggleBtn  = document.getElementById('galleryToggleBtn');
     const toggleText = document.getElementById('toggleText');
 
+    // Expand galeri jika belum
     if (!galleryExpanded) {
         galleryExpanded = true;
         wrapper.classList.add('expanded');
-        toggleBtn.classList.add('expanded');
+        if (toggleBtn) toggleBtn.classList.add('expanded');
         if (toggleText) toggleText.textContent = 'Sembunyikan';
     }
 
-    // Scroll ke galeri setelah sedikit delay agar expand selesai
+    // Scroll ke foto terbaru (elemen pertama di grid = foto paling baru)
     setTimeout(() => {
-        document.querySelector('.gallery-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 400);
+        const firstItem = document.querySelector('#galleryGrid .gallery-item');
+        if (firstItem) {
+            firstItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            document.querySelector('.gallery-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, 300);
 }
 
 // =============================================
