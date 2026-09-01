@@ -741,7 +741,8 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .gallery-collapse-wrapper.expanded {
-    max-height: 9999px;
+    max-height: none;
+    overflow: visible;
 }
 
 .gallery-fade {
