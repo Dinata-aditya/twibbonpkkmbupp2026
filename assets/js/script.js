@@ -356,7 +356,16 @@ downloadBtn.addEventListener('click', async () => {
     if (twibbonMask) ec.drawImage(twibbonMask, 0, 0, exp.width, exp.height);
     else              ec.drawImage(twibbonRaw,  0, 0, exp.width, exp.height);
 
-    const dataUrl = exp.toDataURL('image/jpeg', 0.92);
+    // Resize ke maks 1080px untuk hemat ukuran file (~500KB-1MB)
+    const MAX_EXPORT = 1080;
+    const exportRatio = Math.min(MAX_EXPORT / exp.width, MAX_EXPORT / exp.height, 1);
+    const exportW = Math.round(exp.width  * exportRatio);
+    const exportH = Math.round(exp.height * exportRatio);
+    const resized = document.createElement('canvas');
+    resized.width  = exportW;
+    resized.height = exportH;
+    resized.getContext('2d').drawImage(exp, 0, 0, exportW, exportH);
+    const dataUrl = resized.toDataURL('image/jpeg', 0.92);
 
     // Deteksi HP (Android/iOS)
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
