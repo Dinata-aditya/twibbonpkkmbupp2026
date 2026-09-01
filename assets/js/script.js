@@ -102,15 +102,31 @@ function buildMaskedTemplate(srcImg) {
     const oc   = document.createElement('canvas');
     oc.width   = srcImg.naturalWidth;
     oc.height  = srcImg.naturalHeight;
-    const octx = oc.getContext('2d');
+    const octx = oc.getContext('2d', { willReadFrequently: true });
+
     octx.drawImage(srcImg, 0, 0);
     octx.save();
     octx.globalCompositeOperation = 'destination-out';
     octx.translate(FRAME.cx, FRAME.cy);
     octx.rotate(toRad(FRAME.rotate));
-    octx.fillStyle = 'rgba(0,0,0,1)';
-    octx.fillRect(-FRAME.w / 2, -FRAME.h / 2, FRAME.w, FRAME.h);
+    octx.fillStyle = '#000000';
+    octx.beginPath();
+    octx.rect(-FRAME.w / 2, -FRAME.h / 2, FRAME.w, FRAME.h);
+    octx.fill();
     octx.restore();
+
+    // Verifikasi mask berhasil — cek alpha pixel di tengah bingkai
+    try {
+        const px = octx.getImageData(FRAME.cx, FRAME.cy, 1, 1).data;
+        if (px[3] !== 0) {
+            console.warn('⚠️ destination-out tidak didukung di device ini, pakai fallback');
+            return null;
+        }
+    } catch(e) {
+        console.warn('getImageData gagal:', e);
+        return null;
+    }
+
     return oc;
 }
 
@@ -450,25 +466,49 @@ async function compressCanvas(srcCanvas) {
     return new Promise(res => small.toBlob(res, 'image/jpeg', 0.3));
 }
 
-async function uploadToGallery(exportCanvas, nama, prodi) {
+async function uploadToGallery(exportCanvas, nama = 'Anonim', prodi = '') {
     const blob = await compressCanvas(exportCanvas);
     if (!blob) throw new Error('Gagal kompres gambar');
     const rand     = Math.random().toString(36).slice(2, 6);
     const fileName = 'twibbon_' + Date.now() + '_' + rand + '.jpg';
     const h = { 'Authorization': 'Bearer ' + SUPABASE_ANON, 'apikey': SUPABASE_ANON };
 
-    const uploadRes = await fetch(SUPABASE_URL + '/storage/v1/object/' + GALLERY_BUCKET + '/' + fileName,
-        { method: 'POST', headers: Object.assign({}, h, { 'Content-Type': 'image/jpeg', 'x-upsert': 'false' }), body: blob });
-    if (!uploadRes.ok) throw new Error(await uploadRes.text());
+    // Retry upload storage maksimal 3x
+    let uploadOk = false;
+    let lastErr  = '';
+    for (let i = 0; i < 3; i++) {
+        try {
+            const uploadRes = await fetch(SUPABASE_URL + '/storage/v1/object/' + GALLERY_BUCKET + '/' + fileName,
+                { method: 'POST', headers: Object.assign({}, h, { 'Content-Type': 'image/jpeg', 'x-upsert': 'true' }), body: blob });
+            if (uploadRes.ok) { uploadOk = true; break; }
+            lastErr = await uploadRes.text();
+        } catch(e) {
+            lastErr = e.message;
+            await new Promise(r => setTimeout(r, 1000 * (i + 1))); // tunggu 1s, 2s, 3s
+        }
+    }
+    if (!uploadOk) throw new Error('Upload storage gagal: ' + lastErr);
 
     const fileUrl = SUPABASE_URL + '/storage/v1/object/public/' + GALLERY_BUCKET + '/' + fileName;
-    const metaRes = await fetch(SUPABASE_URL + '/rest/v1/gallery',
-        { method: 'POST', headers: Object.assign({}, h, { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
-          body: JSON.stringify({ file_name: fileName, file_url: fileUrl, name: nama, prodi: prodi }) });
-    if (!metaRes.ok) throw new Error(await metaRes.text());
 
+    // Simpan metadata dengan retry
+    let metaOk = false;
+    for (let i = 0; i < 3; i++) {
+        try {
+            const metaRes = await fetch(SUPABASE_URL + '/rest/v1/gallery',
+                { method: 'POST', headers: Object.assign({}, h, { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
+                  body: JSON.stringify({ file_name: fileName, file_url: fileUrl, name: nama, prodi: prodi }) });
+            if (metaRes.ok) { metaOk = true; break; }
+        } catch(e) {
+            await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+        }
+    }
+
+    // Tampilkan ke galeri meski metadata gagal (foto sudah tersimpan)
     prependGalleryItem({ file_url: fileUrl, name: nama, prodi: prodi });
     updateGalleryCount(galleryTotal + 1);
+
+    if (!metaOk) console.warn('Metadata galeri gagal disimpan, tapi foto sudah terupload');
 }
 
 async function loadGallery(reset) {
