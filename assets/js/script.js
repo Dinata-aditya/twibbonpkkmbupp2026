@@ -356,7 +356,7 @@ downloadBtn.addEventListener('click', async () => {
     if (twibbonMask) ec.drawImage(twibbonMask, 0, 0, exp.width, exp.height);
     else              ec.drawImage(twibbonRaw,  0, 0, exp.width, exp.height);
 
-    const dataUrl = exp.toDataURL('image/png');
+    const dataUrl = exp.toDataURL('image/jpeg', 0.92);
 
     // Deteksi HP (Android/iOS)
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -388,14 +388,14 @@ downloadBtn.addEventListener('click', async () => {
         } else {
             // Popup diblokir, fallback ke download biasa
             const link = document.createElement('a');
-            link.download = 'Twibbon-PKKMB-2026.png';
+            link.download = 'Twibbon-PKKMB-2026.jpg';
             link.href = dataUrl;
             link.click();
         }
     } else {
         // Di desktop: download langsung
         const link = document.createElement('a');
-        link.download = 'Twibbon-PKKMB-2026.png';
+        link.download = 'Twibbon-PKKMB-2026.jpg';
         link.href = dataUrl;
         link.click();
     }
