@@ -358,15 +358,16 @@ downloadBtn.addEventListener('click', async () => {
 
     const dataUrl = exp.toDataURL('image/png');
 
-    // Tampilkan modal di HP agar bisa simpan foto
+    // Download langsung untuk semua device
+    const link = document.createElement('a');
+    link.download = 'Twibbon-PKKMB-2026.png';
+    link.href = dataUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Di HP tampilkan modal instruksi simpan gambar
     if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) showSaveModal(dataUrl);
-    } else {
-        // Di desktop: download langsung
-        const link = document.createElement('a');
-        link.download = 'Twibbon-PKKMB-2026.png';
-        link.href = dataUrl;
-        link.click();
-    }
 
     setDownloadState('loading');
     try {
