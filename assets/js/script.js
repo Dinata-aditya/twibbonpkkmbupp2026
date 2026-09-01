@@ -366,8 +366,9 @@ downloadBtn.addEventListener('click', async () => {
     link.click();
     document.body.removeChild(link);
 
-    // Di HP tampilkan modal instruksi simpan gambar
-    if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) showSaveModal(dataUrl);
+    // Di HP tampilkan modal instruksi simpan gambar (cek juga lebar layar)
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && window.innerWidth <= 768;
+    if (isMobile) showSaveModal(dataUrl);
 
     setDownloadState('loading');
     try {
