@@ -379,7 +379,7 @@ downloadBtn.addEventListener('click', async () => {
         // Expand galeri dan scroll ke foto baru (delay agar prepend selesai dulu)
         setTimeout(() => scrollToGallery(), 100);
     } catch (err) {
-        console.error(err);
+        console.warn('⚠️ Foto berhasil didownload, tapi gagal simpan ke galeri:', err.message);
         // Download sudah berhasil, gagal simpan ke galeri tidak perlu tampil error besar
         setDownloadState('done');
     }
