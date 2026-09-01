@@ -345,6 +345,9 @@ downloadBtn.addEventListener('click', async () => {
         // Hanya upload ke galeri, tidak simpan foto asli agar hemat storage
         await uploadToGallery(exp, nama, prodi);
         setDownloadState('success');
+
+        // Expand galeri dan scroll ke sana otomatis
+        scrollToGallery();
     } catch (err) {
         console.error(err);
         // Download sudah berhasil, gagal simpan ke galeri tidak perlu tampil error besar
@@ -396,6 +399,26 @@ function showError(msg) {
 function hideError() {
     const el = document.getElementById('errorMsg');
     if (el) el.style.display = 'none';
+}
+
+// ── SCROLL KE GALERI ─────────────────────────
+function scrollToGallery() {
+    // Expand galeri jika belum
+    const wrapper   = document.getElementById('galleryCollapseWrapper');
+    const toggleBtn = document.getElementById('galleryToggleBtn');
+    const toggleText = document.getElementById('toggleText');
+
+    if (!galleryExpanded) {
+        galleryExpanded = true;
+        wrapper.classList.add('expanded');
+        toggleBtn.classList.add('expanded');
+        if (toggleText) toggleText.textContent = 'Sembunyikan';
+    }
+
+    // Scroll ke galeri setelah sedikit delay agar expand selesai
+    setTimeout(() => {
+        document.querySelector('.gallery-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 400);
 }
 
 // =============================================
